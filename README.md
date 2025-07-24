@@ -23,20 +23,20 @@ TODO
 ```zig  
 
 const print = std.debug.print;
-const Q = =@import("siquants").Q;
+const Q = @import("siquants").Quantity;
 
-// Q is a type defined like:
+// Quantity is a type defined like:
 //
-// fn Q(comptime quantkind: QuantityKind, comptime base: SIOrder) type {...}
+// fn Quantity (comptime quantkind: QuantityKind, comptime base: SIOrder) type {...}
 //
 // where
 // - QuantityKind is one of the many Physical Quantity kinds in the SI system,
 // - base is something like .Milli or .Tera, which will maximize the
-//    precision of the floating point value around that ordre of magnitude
+//    precision of the floating point value around that order of of magnitude
 
 fn main() void {
   // initialize a Length as 4.0 Millis.
-  const len1= Q(.Length, .Milli).init(4.0);
+  const len1 = Q(.Length, .Milli).init(4.0);
 
   print("len1 as kilometers {}", .{len1.as(.Kilo).value});
 
@@ -46,7 +46,7 @@ fn main() void {
   const area = len1.mult(len2);
 
   // Convert to meters for printing
-  print("A rectangle of 4mm * 24km has an area of {} m^2", .{area.as(.Unit).value});
+  print("A rectangle of 4mm * 24km has an area of {} m^2", .{area.as(.Unit)});
 }
 
 ```

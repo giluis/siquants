@@ -1,66 +1,108 @@
-const QuantityKind = @import("quant.zig").QuantityKind;
+const QuantityKind = @import("quantkind.zig").QuantityKind;
 const std = @import("std");
 const MultPair: type = [2]QuantityKind;
 
 pub fn a() void {
-    const mult_fields =@typeInfo(VALID_MULTS).@"struct".fields;
-    const qk_fields =@typeInfo(QuantityKind).@"struct".fields;
-    std.debug.assert(mult_fields.len == qk_fields.len);
-    @compileLog("...");
+    const mult_fields = @typeInfo(VALID_MULTS).@"struct".fields;
+    const qk_fields = @typeInfo(QuantityKind).@"enum".fields;
+    // comptime std.debug.assert(mult_fields.len == qk_fields.len);
+    @setEvalBranchQuota(20000);
 
-    for(mult_fields, qk_fields) |m,q| {
-        const lower_m = [0] ** 100;
-        const lower_q = [0] ** 100;
-        std.ascii.lowerString(lower_m, m.name);
-        std.ascii.lowerString(lower_q, q.name);
+    std.debug.print("\n\n ===== Quantity Kind is lacking... ", .{});
+    inline for (mult_fields) |m| {
+        inline for(qk_fields) |q| {
+            var lower_m = [_]u8{undefined} ** 100;
+            var lower_q = [_]u8{undefined} ** 100;
+            _ = std.ascii.lowerString(&lower_m, m.name);
+            _ = std.ascii.lowerString(&lower_q, q.name);
+            if (std.mem.eql(u8, &lower_m, &lower_q)) {
+                break;
+            }
+        } else {
+            std.debug.print("\n- {s}", .{m.name});
 
-        std.debug.assert(std.mem.eql(u8, lower_m, lower_q)) ;
+        }
+    }
+    std.debug.print("\n\n ===== Valid Mults is lacking... ", .{});
+
+    inline for(qk_fields) |q| {
+        inline for (mult_fields) |m| {
+            var lower_m = [_]u8{undefined} ** 100;
+            var lower_q = [_]u8{undefined} ** 100;
+            _ = std.ascii.lowerString(&lower_m, m.name);
+            _ = std.ascii.lowerString(&lower_q, q.name);
+            if (std.mem.eql(u8, &lower_m, &lower_q)) {
+                break;
+            }
+        } else {
+            std.debug.print("\n- {s}", .{q.name});
+        }
     }
 }
 
+const Operation = enum {
+    Div, 
+    Mul, 
+}; 
+
+const OperationGraph = struct {
+    const num_quantity_kinds = @typeInfo(QuantityKind).@"enum".fields.len;
+    quantity_kinds:  [num_quantity_kinds] QuantityKind, 
+    edges: [num_quantity_kinds] [10] Operation,
+};
+
+pub const VALID_MULTS = ValidMultsStruct{}; 
+
 // TODO: check this is correct
-pub const VALID_MULTS= struct {
-    absorbedDoseRate: [6]MultPair= .{ .{ .Mass, .Power }, .{ .HalfLife, .RadiationDose } },
-    action: [6]MultPair= .{.{ .Frequency, .Energy }},
-    amountOfSubstance: [6]MultPair= .{
+const ValidMultsStruct = struct {
+    AbsorbedDoseRate: [2]MultPair = .{ .{ .Mass, .Power }, .{ .HalfLife, .RadiationDose } },
+    Action: [1]MultPair = .{.{ .Frequency, .Energy }},
+    AmountOfSubstance: [4]MultPair = .{
         .{ .ChemicalPotential, .Energy },
         .{ .MolarEnergy, .Energy },
         .{ .MolarEntropy, .Entropy },
         .{ .MolarHeatCapacity, .HeatCapacity },
     },
-    angularAcceleration: [6]MultPair= .{},
-    accelaration: [6]MultPair= .{
+    AngularAcceleration: [0]MultPair = .{},
+    // todo: add mults for angular momentum
+    AngularMomemtum: [0]MultPair = .{},
+    Acceleration: [3]MultPair = .{
         .{ .Mass, .Force },
         .{ .Time, .Velocity },
         // Add Energy per mass
         .{ .Length, .EnergyPerMass },
     },
-    area: [6]MultPair= .{
+    Area: [5]MultPair = .{
         .{ .Length, .Volume },
         .{ .Pressure, .Force },
         .{ .Illuminance, .LuminousFlux },
         .{ .MagneticField, .MagneticFlux },
+        // todo(this could be work)
         .{ .SurfaceTension, .Work },
     },
-    areaDensity: [6]MultPair= .{.{ .Area, .Mass }},
-    capacitance: [6]MultPair= .{
-        .{ .ElectricPotential, .EletricCharge },
+    AreaDensity: [1]MultPair = .{.{ .Area, .Mass }},
+    Capacitance: [1]MultPair = .{
+        .{ .ElectricPotential, .ElectricCharge },
         // todo: consider Voltage^2 here. Also, does voltage^2 exist here?
-        .{.ElectricPotentialSquared, .EletricCharge},
+        // .{.ElectricPotentialSquared, .ElectricCharge},
     },
+    Compressibility: [0] MultPair = .{},
     // todo: add Vector
-    magneticField: [6]MultPair= .{
+    MagneticField: [1]MultPair = .{
         .{ .Area, .MagneticFlux },
     },
-    catalyticActivityConcentration: [6]MultPair= .{},
-    chemicalPotential: [6]MultPair= .{
+    CatalyticActivityConcentration: [0]MultPair = .{},
+    ChemicalPotential: [1]MultPair = .{
         .{ .MolarConcentration, .EnergyDensity },
     },
-    volumeDensity: [6]MultPair= .{
+    VolumeDensity: [1]MultPair = .{
         .{ .Volume, .Mass },
     },
-    doseEquivalent: [6]MultPair= .{.{ .Mass, .Energy }},
-    electricCharge: [6]MultPair= .{
+    // todo: add density
+    Density: [0] MultPair = .{},
+    DynamicViscosity: [0] MultPair = .{},
+    DoseEquivalent: [1]MultPair = .{.{ .Mass, .Energy }},
+    ElectricCharge: [3]MultPair = .{
         // todo: consider voltage herecross product of velocity and idk what else, need help here
         .{ .ElectricPotential, .Energy },
         // todo: add electric field
@@ -68,121 +110,133 @@ pub const VALID_MULTS= struct {
         // todo: this is the cross product of velocity and idk what else, need help herecross product of velocity and idk what else, need help here
         .{ .MagneticField, .Force },
     },
-    electricChargeDensity: [6]MultPair= .{},
-    electricalConductance: [6]MultPair= .{
+    ElectricChargeDensity: [0]MultPair = .{},
+    ElectricalConductance: [1]MultPair = .{
         .{ .ElectricPotential, .ElectricCurrent },
     },
-    electricalConductivity: [6]MultPair= .{},
-    electricCurrent: [6]MultPair= .{
+    ElectricalConductivity: [0]MultPair = .{},
+    ElectricCurrent: [3]MultPair = .{
         .{ .Time, .ElectricCharge },
         // todo: consider voltage here
-        .{ .ElectricResistance, .ElectricPotential },
+        .{ .ElectricalResistance, .ElectricPotential },
         // todo: consider voltage here
         .{ .ElectricPotential, .Power },
     },
-    electricField: [6]MultPair= .{
-        .{ .Charge, .Force },
+    ElectricField: [2]MultPair = .{
+        .{ .ElectricCharge, .Force },
         // todo: consider electric potential
-        .{ .Length, .Voltage },
+        .{ .Length, .ElectricPotential },
     },
     // todo: consider voltage here
-    electricPotential: [6]MultPair= .{
+    ElectricPotential: [4]MultPair = .{
         .{ .ElectricCurrent, .Power },
         .{ .ElectricCharge, .Energy },
         .{ .ElectricalConductance, .ElectricCurrent },
         .{ .Time, .MagneticFlux },
     },
-    electricalResistance: [6]MultPair= .{
+    ElectricalResistance: [2]MultPair = .{
         .{ .ElectricCurrent, .ElectricPotential },
         .{ .Length, .ElectricalResistivity },
         // todo: add a name for this
-        .{.ElectricCurrentSquared, .ElectricPotential},
+        // .{ .ElectricCurrentSquared, .ElectricPotential },
     },
-    electricalResistivity: [6]MultPair= .{},
-    energy: [6]MultPair= .{ .{ .Frequency, .Power }, .{ .Time, .Action } },
-    energyDensity: [6]MultPair= .{.{ .Volume, .Energy }},
-    entropy: [6]MultPair= .{
+    ElectricalResistivity: [0]MultPair = .{},
+    Energy: [2]MultPair = .{ .{ .Frequency, .Power }, .{ .Time, .Action } },
+    // todo: energy per mass mults
+    EnergyPerMass: [0]MultPair = .{},
+    EnergyDensity: [1]MultPair = .{.{ .Volume, .Energy }},
+    Entropy: [1]MultPair = .{
     // todo: should I have heat
     .{ .Temperature, .Heat }},
-    frequency: [6]MultPair= .{
-        .{ .PlancksConstant, .Energy },
+    Frequency: [1]MultPair = .{
+        // TODO: add physical constants
+        // .{ .PlancksConstant, .Energy },
         // todo: add number of cycles
         .{ .Time, .NumberOfCycles },
     },
     // todo: Vector
-    force: [6]MultPair= .{
+    Force: [3]MultPair = .{
         .{ .Time, .Impulse },
         // todo: Should I separate length and distance
         // Applicable for Torque as well
         .{ .Length, .Energy },
         .{ .Velocity, .Power },
     },
-    halfLife: [6]MultPair= .{.{ .AbsorbedDoseRate, .RadiationDose }},
-    // heat = ,: [6]MultPair=
-    heatCapacity: [6]MultPair= .{
+    HalfLife: [1]MultPair = .{.{ .AbsorbedDoseRate, .RadiationDose }},
+    Heat: [0]MultPair = .{},
+    // heat = ,=
+    HeatCapacity: [1]MultPair = .{
     // todo: add heat?
-        .{ .Temperature, .Heat }},
-    heatFluxDensity: [6]MultPair= .{},
-    illuminance: [6]MultPair= .{.{ .Area, .LuminousFlux }},
-    impedance: [6]MultPair= .{.{ .ElectricCurrent, .ElectricPotential }},
-    inductance: [6]MultPair= .{
+    .{ .Temperature, .Heat }},
+    HeatFluxDensity: [0]MultPair = .{},
+    Illuminance: [1]MultPair = .{.{ .Area, .LuminousFlux }},
+    Impedance: [1]MultPair = .{.{ .ElectricCurrent, .ElectricPotential }},
+    // todo: impulse mults
+    Impulse: [0]MultPair = .{},
+    Inductance: [1]MultPair = .{
         .{ .ElectricCurrent, .MagneticFlux },
         // todo: not sure if should add current squared
-        .{.ElectricCurrentSquared, .MagneticFlux}
+        // .{ .ElectricCurrentSquared, .MagneticFlux },
     },
-    irradiance: [6]MultPair= .{.{ .Area, .Power }},
-    intensity: [6]MultPair= .{.{ .Area, .Power }},
-    // kineticEnergy = ,: [6]MultPair=
-    length: [6]MultPair= .{ .{ .Length, .Area }, .{ .Area, .Volume }, .{ .Force, .Energy }, .{ .Momentum, .AngularMomemtum } },
-    linearDensity: [6]MultPair= .{
+    Irradiance: [1]MultPair = .{.{ .Area, .Power }},
+    Intensity: [1]MultPair = .{.{ .Area, .Power }},
+    KineticEnergy: [0]MultPair = .{},
+    // kineticEnergy = ,=
+    // todo: should I have latent heat?
+    LatentHeat: [0]MultPair = .{},
+    Length: [4]MultPair = .{ .{ .Length, .Area }, .{ .Area, .Volume }, .{ .Force, .Energy }, .{ .Momemtum, .AngularMomemtum } },
+    LinearDensity: [1]MultPair = .{
         .{ .Length, .Mass },
     },
-    luminousFlux: [6]MultPair= .{.{ .Time, .Energy }},
-    luminousIntensity: [6]MultPair= .{
+    LuminousFlux: [1]MultPair = .{.{ .Time, .Energy }},
+    LuminousIntensity: [1]MultPair = .{
         // todo: add solid angle
         .{ .SolidAngle, .LuminousFlux },
     },
-    magneticFlux: [6]MultPair= .{
+    MagneticFlux: [0]MultPair = .{
         // todo: Inverse here
         // .{.InverseInductance, .Current}
     },
-    mass: [6]MultPair= .{
+    Mass: [3]MultPair = .{
         .{ .Acceleration, .Force },
         .{ .Velocity, .Momemtum },
         .{ .LatentHeat, .Energy },
     },
-    // meanLifetime = ,: [6]MultPair=
-    momemtum: [6]MultPair= .{
+    // meanLifetime = ,=
+    Momemtum: [2]MultPair = .{
         // Add angular momentum
         .{ .Length, .AngularMomemtum },
         .{ .Velocity, .Energy },
     },
-    molarConcentration: [6]MultPair= .{
+    MolarConcentration: [3]MultPair = .{
         .{ .Volume, .AmountOfSubstance },
         .{ .ChemicalPotential, .EnergyDensity },
         .{ .MolarEnergy, .EnergyDensity },
     },
-    molarEnergy: [6]MultPair= .{
+    MolarEnergy: [2]MultPair = .{
         .{ .AmountOfSubstance, .Energy },
         .{ .MolarConcentration, .EnergyDensity },
     },
-    molarEntropy: [6]MultPair= .{
+    MolarEntropy: [1]MultPair = .{
         .{ .AmountOfSubstance, .Entropy },
     },
-    molarHeatCapacity: [6]MultPair= .{
+    MolarHeatCapacity: [1]MultPair = .{
         .{ .AmountOfSubstance, .HeatCapacity },
     },
-    momentOfInertia: [6]MultPair= .{},
-    opticalPower: [6]MultPair= .{},
-    permeability: [6]MultPair= .{},
-    permittivity: [6]MultPair= .{},
+    // todo: momentofinertial mults
+    MomentOfInertia: [0]MultPair = .{},
+    // todo: numberofcycles mults
+    NumberOfCycles: [0]MultPair = .{},
+    OpticalPower: [0]MultPair = .{},
+    Permeability: [0]MultPair = .{},
+    Permittivity: [0]MultPair = .{},
     // TODO(luis.gil): add this
-    // potentialEnergy: [6]MultPair= .{},
-    power: [6]MultPair= .{
+    // potentialEnergy:  [_]MultPair=.{},
+    Power: [1]MultPair = .{
         .{ .Frequency, .Energy },
     },
     // todo: should i descriminate between energy, work and heat?
-    pressure: [6]MultPair= .{
+    Pressure: [5]MultPair = .{
         .{ .Volume, .Energy },
         .{ .Area, .Force },
         // todo: check that dynamic viscosity exists
@@ -191,339 +245,345 @@ pub const VALID_MULTS= struct {
         // todo: strain, compressibility
         .{ .Compressibility, .Strain },
     },
-    radioActivity: [6]MultPair= .{},
-    radiationDose: [6]MultPair= .{.{ .Mass, .Energy }},
-    radiance: [6]MultPair= .{
+
+    RadioActivity: [0]MultPair = .{},
+    RadiationDose: [1]MultPair = .{.{ .Mass, .Energy }},
+    Radiance: [2]MultPair = .{
         .{ .Area, .RadiantIntensity },
         .{ .SolidAngle, .Irradiance },
     },
-    radiantIntensity: [6]MultPair= .{.{ .SolidAngle, .Power }},
-    reactionRate: [6]MultPair= .{},
-    reluctance: [6]MultPair= .{
+    RadiantIntensity: [1]MultPair = .{.{ .SolidAngle, .Power }},
+    ReactionRate: [0]MultPair = .{},
+    Reluctance: [1]MultPair = .{
         .{ .MagneticFlux, .ElectricCurrent },
     },
-    specificEnergy: [6]MultPair= .{
+    SpecificEnergy: [1]MultPair = .{
         .{ .Mass, .Energy },
     },
-    specificHeatCapacity: [6]MultPair= .{
+    SpecificHeatCapacity: [1]MultPair = .{
         .{ .Mass, .HeatCapacity },
     },
-    specificVolume: [6]MultPair= .{ .Mass, .Volume },
-    speed: [6]MultPair= .{},
-    spin: [6]MultPair= .{.{ .Action, .AngularMomentum }},
-    stress: [6]MultPair= .{
+    SpecificVolume: [1]MultPair = .{.{ .Mass, .Volume }},
+    Speed: [0]MultPair = .{},
+    Spin: [1]MultPair = .{.{ .Action, .AngularMomemtum }},
+    Stress: [4]MultPair = .{
         .{ .Volume, .Energy },
         .{ .Area, .Force },
         .{ .Strain, .EnergyDensity },
         .{ .Time, .Viscosity },
     },
     // todo: check strain exists and what is it
-    strain: [6]MultPair= .{
+    Strain: [1]MultPair = .{
         .{ .YoungsModulous, .Stress },
     },
-    surfaceTension: [6]MultPair= .{
+    SurfaceTension: [2]MultPair = .{
         .{ .Length, .Force },
         .{ .Area, .Energy },
     },
-    temperature: [6]MultPair= .{},
-    thermalConductance: [6]MultPair= .{
+    Temperature: [0]MultPair = .{},
+    // todo: temperatureDiff mults
+    TemperatureDiff: [0]MultPair = .{},
+    ThermalConductance: [1]MultPair = .{
     // todo: Add temperature diff
     .{ .TemperatureDiff, .Power }},
-    thermalConductivity: [6]MultPair= .{
+    ThermalConductivity: [1]MultPair = .{
         .{ .Length, .ThermalConductance },
     },
-    thermalResistance: [6]MultPair= .{ .{ .Power, .TemperatureDiff }, .{ .Length, .ThermalResistivity } },
-    thermalResistivity: [6]MultPair= .{},
-    time: [6]MultPair= .{
+    ThermalResistance: [2]MultPair = .{ .{ .Power, .TemperatureDiff }, .{ .Length, .ThermalResistivity } },
+    ThermalResistivity: [0]MultPair = .{},
+    Time: [5]MultPair = .{
         // Add impulse
         .{ .Force, .Impulse },
         .{ .Power, .Energy },
-        .{ .Current, .EletricCharge },
+        .{ .ElectricCurrent, .ElectricCharge },
         .{ .Acceleration, .Velocity },
         .{ .Frequency, .NumberOfCycles },
     },
-    viscosity: [6]MultPair= .{
+    Viscosity: [0]MultPair = .{
         // TODO: this is a division actually
         // .{.InverseTime, .Stress},
     },
-    velocity: [6]MultPair= .{
+    Velocity: [3]MultPair = .{
         // Check displacement
         .{ .Time, .Length },
-        .{ .Mass, .Momentum },
+        .{ .Mass, .Momemtum },
         .{ .Force, .Power },
     },
-    volume: [6]MultPair= .{
-        .{ .Pressure, .Word },
+    Volume: [2]MultPair = .{
+        .{ .Pressure, .Energy },
         .{ .Density, .Mass },
     },
-    volumetricFlowRate: [6]MultPair= .{},
-    wavelength: [6]MultPair= .{
+    VolumetricFlowRate: [0]MultPair = .{},
+    Wavelength: [1]MultPair = .{
         .{ .Frequency, .Speed },
     },
-    wavenumber: [6]MultPair= .{},
-    youngsModulus: [6]MultPair= .{
+    Wavenumber: [0]MultPair = .{},
+    Work: [0]MultPair = .{},
+    YoungsModulous: [1]MultPair = .{
         .{ .Strain, .Stress },
     },
-    springConstant: [6]MultPair= .{.{ .Length, .Force }},
+    SpringConstant: [1]MultPair = .{.{ .Length, .Force }},
     // todo: add solid angle
-    solidAngle: [6]MultPair= .{},
+    SolidAngle: [0]MultPair = .{},
+    // todo: make this unreachable
+    UNKNOWN: [0]MultPair = .{},
 };
 
-    // // .AbsorbedDoseRate
-    // // .Action
-    // .{.{ .Frequency, .Energy }},
-    // // .AmountOfSubstance
-    // .{
-    //     .{ .ChemicalPotential, .Energy },
-    //     .{ .MolarEnergy, .Energy },
-    //     .{ .MolarEntropy, .Entropy },
-    //     .{ .MolarHeatCapacity, .HeatCapacity },
-    // },
-    // // .AngularAcceleration
-    // // .Accelaration
-    // // .Area
-    // // .AreaDensity
-    // // .Capacitance
-    // // .MagneticField
-    // // .CatalyticActivityConcentration
-    // // .ChemicalPotential
-    // // .VolumeDensity
-    // // .DoseEquivalent
-    // // .ElectricCharge
-    // // .ElectricChargeDensity
-    // // .ElectricalConductance
-    // // .ElectricalConductivity
-    // ,
-    // // .ElectricCurrent
-    // ,
-    // // .ElectricField
-    // ,
-    // // todo: consider voltage here
-    // // .ElectricPotential
-    // ,
-    // // .ElectricalResistance
-    // ,
-    // // .ElectricalResistivity
-    // ,
-    // // .Energy
-    // ,
-    // // .EnergyDensity
-    // ,
-    // // .Entropy
-    // // todo: should I have heat
-    // // .Frequency
-    // ,
-    // // todo: Vector
-    // // .Force
-    // .{
-    //     .{ .Time, .Impulse },
-    //     // todo: Should I separate length and distance
-    //     // Applicable for Torque as well
-    //     .{ .Length, .Energy },
-    //     .{ .Velocity, .Power },
-    // },
-    // // .HalfLife
-    // .{.{ .AbsorbedDoseRate, .RadiationDose }},
-    // // .Heat = ,
-    // // .HeatCapacity
-    // .{
-    // // todo: add heat?
-    // .{ .Temperature, .Heat }},
-    // // .HeatFluxDensity
-    // .{},
-    // // .Illuminance
-    // .{.{ .Area, .LuminousFlux }},
-    // // .Impedance
-    // .{.{ .ElectricCurrent, .ElectricPotential }},
-    // // .Inductance
-    // .{
-    //     .{ .ElectricCurrent, .MagneticFlux },
-    //     // todo: not sure if should add current squared
-    //     // .{.ElectricCurrentSquared, .MagneticFlux},
-    // },
-    // // .Irradiance
-    // .{.{ .Area, .Power }},
-    // // .Intensity
-    // .{.{ .Area, .Power }},
-    // // .KineticEnergy = ,
-    // // .Length
-    // .{ .{ .Length, .Area }, .{ .Area, .Volume }, .{ .Force, .Energy }, .{ .Momentum, .AngularMomemtum } },
-    // // .LinearDensity
-    // .{
-    //     .{ .Length, .Mass },
-    // },
-    // // .LuminousFlux
-    // .{.{ .Time, .Energy }},
-    // // .LuminousIntensity
-    // .{
-    //     // todo: add solid angle
-    //     .{ .SolidAngle, .LuminousFlux },
-    // },
-    // // .MagneticFlux
-    // .{
-    //     // todo: Inverse here
-    //     // .{InverseInductance, .Current}
-    // },
-    // // .Mass
-    // .{
-    //     .{ .Acceleration, .Force },
-    //     .{ .Velocity, .Momemtum },
-    //     .{ .LatentHeat, .Energy },
-    // },
-    // // .MeanLifetime = ,
-    // // .Momemtum
-    // .{
-    //     // Add angular momentum
-    //     .{ .Length, .AngularMomemtum },
-    //     .{ .Velocity, .Energy },
-    // },
-    // // .MolarConcentration
-    // .{
-    //     .{ .Volume, .AmountOfSubstance },
-    //     .{ .ChemicalPotential, .EnergyDensity },
-    //     .{ .MolarEnergy, .EnergyDensity },
-    // },
-    // // .MolarEnergy
-    // .{
-    //     .{ .AmountOfSubstance, .Energy },
-    //     .{ .MolarConcentration, .EnergyDensity },
-    // },
-    // // .MolarEntropy
-    // .{
-    //     .{ .AmountOfSubstance, .Entropy },
-    // },
-    // // .MolarHeatCapacity
-    // .{
-    //     .{ .AmountOfSubstance, .HeatCapacity },
-    // },
-    // // .MomentOfInertia
-    // .{},
-    // // .OpticalPower
-    // .{},
-    // // .Permeability
-    // .{},
-    // // .Permittivity
-    // .{},
-    // // .PotentialEnergy
-    // .{},
-    // // .Power
-    // .{
-    //     .{ .Frequency, .Energy },
-    // },
-    // // todo: should i descriminate between energy, work and heat?
-    // // .Pressure
-    // .{
-    //     .{ .Volume, .Energy },
-    //     .{ .Area, .Force },
-    //     // todo: check that dynamic viscosity exists
-    //     .{ .Time, .DynamicViscosity },
-    //     .{ .Length, .SurfaceTension },
-    //     // todo: strain, compressibility
-    //     .{ .Compressibility, .Strain },
-    // },
-    // // .RadioActivity
-    // .{},
-    // // .RadiationDose
-    // .{.{ .Mass, .Energy }},
-    // // .Radiance
-    // .{
-    //     .{ .Area, .RadiantIntensity },
-    //     .{ .SolidAngle, .Irradiance },
-    // },
-    // // .RadiantIntensity
-    // .{.{ .SolidAngle, .Power }},
-    // // .ReactionRate
-    // .{},
-    // // .Reluctance
-    // .{
-    //     .{ .MagneticFlux, .ElectricCurrent },
-    // },
-    // // .SpecificEnergy
-    // .{
-    //     .{ .Mass, .Energy },
-    // },
-    // // .SpecificHeatCapacity
-    // .{
-    //     .{ .Mass, .HeatCapacity },
-    // },
-    // // .SpecificVolume
-    // .{ .Mass, .Volume },
-    // // .Speed
-    // .{},
-    // // .Spin
-    // .{.{ .Action, .AngularMomentum }},
+// // .AbsorbedDoseRate
+// // .Action
+// .{.{ .Frequency, .Energy }},
+// // .AmountOfSubstance
+// .{
+//     .{ .ChemicalPotential, .Energy },
+//     .{ .MolarEnergy, .Energy },
+//     .{ .MolarEntropy, .Entropy },
+//     .{ .MolarHeatCapacity, .HeatCapacity },
+// },
+// // .AngularAcceleration
+// // .Acceleration
+// // .Area
+// // .AreaDensity
+// // .Capacitance
+// // .MagneticField
+// // .CatalyticActivityConcentration
+// // .ChemicalPotential
+// // .VolumeDensity
+// // .DoseEquivalent
+// // .ElectricCharge
+// // .ElectricChargeDensity
+// // .ElectricalConductance
+// // .ElectricalConductivity
+// ,
+// // .ElectricCurrent
+// ,
+// // .ElectricField
+// ,
+// // todo: consider voltage here
+// // .ElectricPotential
+// ,
+// // .ElectricalResistance
+// ,
+// // .ElectricalResistivity
+// ,
+// // .Energy
+// ,
+// // .EnergyDensity
+// ,
+// // .Entropy
+// // todo: should I have heat
+// // .Frequency
+// ,
+// // todo: Vector
+// // .Force
+// .{
+//     .{ .Time, .Impulse },
+//     // todo: Should I separate length and distance
+//     // Applicable for Torque as well
+//     .{ .Length, .Energy },
+//     .{ .Velocity, .Power },
+// },
+// // .HalfLife
+// .{.{ .AbsorbedDoseRate, .RadiationDose }},
+// // .Heat = ,
+// // .HeatCapacity
+// .{
+// // todo: add heat?
+// .{ .Temperature, .Heat }},
+// // .HeatFluxDensity
+// .{},
+// // .Illuminance
+// .{.{ .Area, .LuminousFlux }},
+// // .Impedance
+// .{.{ .ElectricCurrent, .ElectricPotential }},
+// // .Inductance
+// .{
+//     .{ .ElectricCurrent, .MagneticFlux },
+//     // todo: not sure if should add current squared
+//     // .{.ElectricCurrentSquared, .MagneticFlux},
+// },
+// // .Irradiance
+// .{.{ .Area, .Power }},
+// // .Intensity
+// .{.{ .Area, .Power }},
+// // .KineticEnergy = ,
+// // .Length
+// .{ .{ .Length, .Area }, .{ .Area, .Volume }, .{ .Force, .Energy }, .{ .Momentum, .AngularMomemtum } },
+// // .LinearDensity
+// .{
+//     .{ .Length, .Mass },
+// },
+// // .LuminousFlux
+// .{.{ .Time, .Energy }},
+// // .LuminousIntensity
+// .{
+//     // todo: add solid angle
+//     .{ .SolidAngle, .LuminousFlux },
+// },
+// // .MagneticFlux
+// .{
+//     // todo: Inverse here
+//     // .{InverseInductance, .Current}
+// },
+// // .Mass
+// .{
+//     .{ .Acceleration, .Force },
+//     .{ .Velocity, .Momemtum },
+//     .{ .LatentHeat, .Energy },
+// },
+// // .MeanLifetime = ,
+// // .Momemtum
+// .{
+//     // Add angular momentum
+//     .{ .Length, .AngularMomemtum },
+//     .{ .Velocity, .Energy },
+// },
+// // .MolarConcentration
+// .{
+//     .{ .Volume, .AmountOfSubstance },
+//     .{ .ChemicalPotential, .EnergyDensity },
+//     .{ .MolarEnergy, .EnergyDensity },
+// },
+// // .MolarEnergy
+// .{
+//     .{ .AmountOfSubstance, .Energy },
+//     .{ .MolarConcentration, .EnergyDensity },
+// },
+// // .MolarEntropy
+// .{
+//     .{ .AmountOfSubstance, .Entropy },
+// },
+// // .MolarHeatCapacity
+// .{
+//     .{ .AmountOfSubstance, .HeatCapacity },
+// },
+// // .MomentOfInertia
+// .{},
+// // .OpticalPower
+// .{},
+// // .Permeability
+// .{},
+// // .Permittivity
+// .{},
+// // .PotentialEnergy
+// .{},
+// // .Power
+// .{
+//     .{ .Frequency, .Energy },
+// },
+// // todo: should i descriminate between energy, work and heat?
+// // .Pressure
+// .{
+//     .{ .Volume, .Energy },
+//     .{ .Area, .Force },
+//     // todo: check that dynamic viscosity exists
+//     .{ .Time, .DynamicViscosity },
+//     .{ .Length, .SurfaceTension },
+//     // todo: strain, compressibility
+//     .{ .Compressibility, .Strain },
+// },
+// // .RadioActivity
+// .{},
+// // .RadiationDose
+// .{.{ .Mass, .Energy }},
+// // .Radiance
+// .{
+//     .{ .Area, .RadiantIntensity },
+//     .{ .SolidAngle, .Irradiance },
+// },
+// // .RadiantIntensity
+// .{.{ .SolidAngle, .Power }},
+// // .ReactionRate
+// .{},
+// // .Reluctance
+// .{
+//     .{ .MagneticFlux, .ElectricCurrent },
+// },
+// // .SpecificEnergy
+// .{
+//     .{ .Mass, .Energy },
+// },
+// // .SpecificHeatCapacity
+// .{
+//     .{ .Mass, .HeatCapacity },
+// },
+// // .SpecificVolume
+// .{ .Mass, .Volume },
+// // .Speed
+// .{},
+// // .Spin
+// .{.{ .Action, .AngularMomemtum }},
 
-    // // .Stress
-    // .{
-    //     .{ .Volume, .Energy },
-    //     .{ .Area, .Force },
-    //     .{ .Strain, .EnergyDensity },
-    //     .{ .Time, .Viscosity },
-    // },
-    // // todo: check strain exists and what is it
-    // // .Strain
-    // .{
-    //     .{ .YoungsModulous, .Stress },
-    // },
-    // // .SurfaceTension
-    // .{
-    //     .{ .Length, .Force },
-    //     .{ .Area, .Energy },
-    // },
-    // // .Temperature
-    // .{},
-    // // .ThermalConductance
-    // .{
-    // // todo: Add temperature diff
-    // .{ .TemperatureDiff, .Power }},
-    // // .ThermalConductivity
-    // .{
-    //     .{ .Length, .ThermalConductance },
-    // },
-    // // .ThermalResistance
-    // .{ .{ .Power, .TemperatureDiff }, .{ .Length, .ThermalResistivity } },
-    // // .ThermalResistivity
-    // .{},
-    // // .Time
-    // .{
-    //     // Add impulse
-    //     .{ .Force, .Impulse },
-    //     .{ .Power, .Energy },
-    //     .{ .Current, .EletricCharge },
-    //     .{ .Acceleration, .Velocity },
-    //     .{ .Frequency, .NumberOfCycles },
-    // },
-    // // .Viscosity
-    // .{
-    //     // TODO: this is a division actually
-    //     // .{.InverseTime, .Stress},
-    // },
-    // // .Velocity
-    // .{
-    //     // Check displacement
-    //     .{ .Time, .Length },
-    //     .{ .Mass, .Momentum },
-    //     .{ .Force, .Power },
-    // },
-    // // .Volume
-    // .{
-    //     .{ .Pressure, .Word },
-    //     .{ .Density, .Mass },
-    // },
-    // // .VolumetricFlowRate
-    // .{},
-    // // .Wavelength
-    // .{
-    //     .{ .Frequency, .Speed },
-    // },
-    // // .Wavenumber
-    // .{},
-    // // .YoungsModulus
-    // .{
-    //     .{ .Strain, .Stress },
-    // },
-    // // .SpringConstant
-    // .{.{ .Length, .Force }},
-    // // todo: add solid angle
-    // // .SolidAngle
-    // .{},
+// // .Stress
+// .{
+//     .{ .Volume, .Energy },
+//     .{ .Area, .Force },
+//     .{ .Strain, .EnergyDensity },
+//     .{ .Time, .Viscosity },
+// },
+// // todo: check strain exists and what is it
+// // .Strain
+// .{
+//     .{ .YoungsModulous, .Stress },
+// },
+// // .SurfaceTension
+// .{
+//     .{ .Length, .Force },
+//     .{ .Area, .Energy },
+// },
+// // .Temperature
+// .{},
+// // .ThermalConductance
+// .{
+// // todo: Add temperature diff
+// .{ .TemperatureDiff, .Power }},
+// // .ThermalConductivity
+// .{
+//     .{ .Length, .ThermalConductance },
+// },
+// // .ThermalResistance
+// .{ .{ .Power, .TemperatureDiff }, .{ .Length, .ThermalResistivity } },
+// // .ThermalResistivity
+// .{},
+// // .Time
+// .{
+//     // Add impulse
+//     .{ .Force, .Impulse },
+//     .{ .Power, .Energy },
+//     .{ .Current, .ElectricCharge },
+//     .{ .Acceleration, .Velocity },
+//     .{ .Frequency, .NumberOfCycles },
+// },
+// // .Viscosity
+// .{
+//     // TODO: this is a division actually
+//     // .{.InverseTime, .Stress},
+// },
+// // .Velocity
+// .{
+//     // Check displacement
+//     .{ .Time, .Length },
+//     .{ .Mass, .Momentum },
+//     .{ .Force, .Power },
+// },
+// // .Volume
+// .{
+//     .{ .Pressure, .Word },
+//     .{ .Density, .Mass },
+// },
+// // .VolumetricFlowRate
+// .{},
+// // .Wavelength
+// .{
+//     .{ .Frequency, .Speed },
+// },
+// // .Wavenumber
+// .{},
+// // .YoungsModulus
+// .{
+//     .{ .Strain, .Stress },
+// },
+// // .SpringConstant
+// .{.{ .Length, .Force }},
+// // todo: add solid angle
+// // .SolidAngle
+// .{},
